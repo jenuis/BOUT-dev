@@ -66,275 +66,6 @@
 #include <bout/mesh.hxx>
 
 #include "methods.hxx"
-
-/*******************************************************************************
- * Lookup tables of functions. Map between names, codes and functions
- *******************************************************************************/
-
-/// Translate between DIFF_METHOD codes, and functions
-struct DiffLookup {
-  DIFF_METHOD method;
-  Mesh::deriv_func func;     // Single-argument differencing function
-  Mesh::upwind_func up_func; // Upwinding function
-  Mesh::flux_func fl_func;   // Flux function
-  operator Mesh::deriv_func (){
-    return func;
-  }
-  operator Mesh::upwind_func (){
-    return up_func;
-  }
-  operator Mesh::flux_func (){
-    return fl_func;
-  }
-};
-
-/// Translate between short names, long names and DIFF_METHOD codes
-struct DiffNameLookup {
-  DIFF_METHOD method;
-  const char *label; // Short name
-  const char *name;  // Long name
-};
-
-/// Differential function name/code lookup
-static DiffNameLookup DiffNameTable[] = {
-    {DIFF_U1, "U1", "First order upwinding"},
-    {DIFF_U2, "U2", "Second order upwinding"},
-    {DIFF_C2, "C2", "Second order central"},
-    {DIFF_W2, "W2", "Second order WENO"},
-    {DIFF_W3, "W3", "Third order WENO"},
-    {DIFF_C4, "C4", "Fourth order central"},
-    {DIFF_U3, "U3", "Third order upwinding"},
-    {DIFF_U3, "U4", "Third order upwinding (Can't do 4th order yet)."},
-    {DIFF_S2, "S2", "Smoothing 2nd order"},
-    {DIFF_FFT, "FFT", "FFT"},
-    {DIFF_SPLIT, "SPLIT", "Split into upwind and central"},
-    {DIFF_DEFAULT, nullptr, nullptr}}; // Use to terminate the list
-
-/// First derivative lookup table
-static DiffLookup FirstDerivTable[] = {
-    {DIFF_C2, DDX_C2, nullptr, nullptr},     {DIFF_W2, DDX_CWENO2, nullptr, nullptr},
-    {DIFF_W3, DDX_CWENO3, nullptr, nullptr}, {DIFF_C4, DDX_C4, nullptr, nullptr},
-    {DIFF_S2, DDX_S2, nullptr, nullptr},     {DIFF_FFT, nullptr, nullptr, nullptr},
-    {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Second derivative lookup table
-static DiffLookup SecondDerivTable[] = {{DIFF_C2, D2DX2_C2, nullptr, nullptr},
-                                        {DIFF_C4, D2DX2_C4, nullptr, nullptr},
-                                        {DIFF_FFT, nullptr, nullptr, nullptr},
-                                        {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Upwinding functions lookup table
-static DiffLookup UpwindTable[] = {
-    {DIFF_U1, nullptr, VDDX_U1, nullptr},    {DIFF_U2, nullptr, VDDX_U2, nullptr},
-    {DIFF_C2, nullptr, VDDX_C2, nullptr},    {DIFF_U3, nullptr, VDDX_U3, nullptr},
-    {DIFF_W3, nullptr, VDDX_WENO3, nullptr}, {DIFF_C4, nullptr, VDDX_C4, nullptr},
-    {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Flux functions lookup table
-static DiffLookup FluxTable[] = {
-    {DIFF_SPLIT, nullptr, nullptr, nullptr},   {DIFF_U1, nullptr, nullptr, FDDX_U1},
-    {DIFF_C2, nullptr, nullptr, FDDX_C2},   {DIFF_C4, nullptr, nullptr, FDDX_C4},
-    {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// First staggered derivative lookup
-static DiffLookup FirstStagDerivTable[] = {{DIFF_C2, DDX_C2_stag, nullptr, nullptr},
-                                           {DIFF_C4, DDX_C4_stag, nullptr, nullptr},
-                                           {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Second staggered derivative lookup
-static DiffLookup SecondStagDerivTable[] = {{DIFF_C2, D2DX2_C2_stag, nullptr, nullptr},
-                                            {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Upwinding staggered lookup
-static DiffLookup UpwindStagTable[] = {{DIFF_U1, nullptr, nullptr, VDDX_U1_stag},
-                                       {DIFF_U2, nullptr, nullptr, VDDX_U2_stag},
-                                       {DIFF_C2, nullptr, nullptr, VDDX_C2_stag},
-                                       {DIFF_C4, nullptr, nullptr, VDDX_C4_stag},
-                                       {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/// Flux staggered lookup
-static DiffLookup FluxStagTable[] = {{DIFF_SPLIT, nullptr, nullptr, nullptr},
-                                     {DIFF_U1, nullptr, nullptr, FDDX_U1_stag},
-                                     {DIFF_DEFAULT, nullptr, nullptr, nullptr}};
-
-/*******************************************************************************
- * Routines to use the above tables to map between function codes, names
- * and pointers
- *******************************************************************************/
-
-
-/// Test if a given DIFF_METHOD exists in a table
-bool isImplemented(DiffLookup *table, DIFF_METHOD method) {
-  int i = 0;
-  do {
-    if (table[i].method == method)
-      return true;
-    i++;
-  } while (table[i].method != DIFF_DEFAULT);
-
-  return false;
-}
-
-
-DiffLookup lookupFunc(DiffLookup * table, DIFF_METHOD method) {
-  int i=0;
-  for (int i=0; ; ++i){
-    if (table[i].method == method) {
-      return table[i];
-    }
-    if (table[i].method == DIFF_DEFAULT){
-      return table[i];
-    }
-  }
-}
-
-void printFuncName(DIFF_METHOD method) {
-  // Find this entry
-  int i = 0;
-  do {
-    if (DiffNameTable[i].method == method) {
-      output_info.write(" %s (%s)\n", DiffNameTable[i].name, DiffNameTable[i].label);
-      return;
-    }
-    i++;
-  } while (DiffNameTable[i].method != DIFF_DEFAULT);
-
-  // None
-  output_error.write(" == INVALID DIFFERENTIAL METHOD ==\n");
-}
-
-/// This function is used during initialisation only (i.e. doesn't need to be particularly
-/// fast) Returns DIFF_METHOD, rather than function so can be applied to central and
-/// upwind tables
-DiffLookup lookupFunc(DiffLookup *table, const std::string & label){
-
-  // Loop through the name lookup table
-  for (int i = 0; DiffNameTable[i].method != DIFF_DEFAULT; ++i) {
-    if (strcasecmp(label.c_str(), DiffNameTable[i].label) == 0) { // Whole match
-      auto method=DiffNameTable[i].method;
-      if (isImplemented(table, method)) {
-        printFuncName(method);
-        for (int j=0;;++j){
-          if (table[j].method == method){
-            return table[j];
-          }
-        }
-      }
-    }
-  }
-
-  // No exact match, so throw
-  std::string avail{};
-  for (int i = 0; DiffNameTable[i].method != DIFF_DEFAULT; ++i) {
-    avail += DiffNameTable[i].label;
-    avail += "\n";
-  }
-  throw BoutException("Unknown option %s.\nAvailable options are:\n%s", label.c_str(),
-                      avail.c_str());
-}
-
-
-/*******************************************************************************
- * Default functions
- *
- *
- *******************************************************************************/
-
-// Central -> Central (or Left -> Left) functions
-Mesh::deriv_func fDDX, fDDY, fDDZ;       ///< Differencing methods for each dimension
-Mesh::deriv_func fD2DX2, fD2DY2, fD2DZ2; ///< second differential operators
-Mesh::upwind_func fVDDX, fVDDY, fVDDZ;   ///< Upwind functions in the three directions
-Mesh::flux_func fFDDX, fFDDY, fFDDZ;     ///< Default flux functions
-
-// Central -> Left (or Left -> Central) functions
-Mesh::deriv_func sfDDX, sfDDY, sfDDZ;
-Mesh::deriv_func sfD2DX2, sfD2DY2, sfD2DZ2;
-Mesh::flux_func sfVDDX, sfVDDY, sfVDDZ;
-Mesh::flux_func sfFDDX, sfFDDY, sfFDDZ;
-
-/*******************************************************************************
- * Initialisation
- *******************************************************************************/
-
-/// Set the derivative method, given a table and option name
-template <typename T, typename Ts>
-void derivs_set(std::vector<Options *> options, DiffLookup *table, DiffLookup *stable,
-                const std::string &name, const std::string &def, T &f, Ts &sf,
-                bool staggerGrids) {
-  TRACE("derivs_set()");
-  output_info.write("\t%-12s: ", name.c_str());
-  string label = def;
-  for (auto &opts : options) {
-    if (opts->isSet(name)) {
-      opts->get(name, label, "");
-      break;
-    }
-  }
-
-  f = lookupFunc(table, label); // Find the function
-
-  label = def;
-  if (staggerGrids) {
-    output_info.write("\tStag. %-6s: ", name.c_str());
-    for (auto &_name : {name + "stag", name}) {
-      for (auto &opts : options) {
-        if (opts->isSet(_name)) {
-          opts->get(_name, label, "");
-          sf = lookupFunc(stable, label); // Find the function
-          return;
-        }
-      }
-    }
-  }
-  sf = lookupFunc(stable, label); // Find the function
-}
-
-/// Initialise derivatives from options
-void derivs_initialise(Options *optionbase, std::string sec, bool staggerGrids,
-                       Mesh::deriv_func &fdd, Mesh::deriv_func &sfdd,
-                       Mesh::deriv_func &fd2d, Mesh::deriv_func &sfd2d,
-                       Mesh::upwind_func &fu, Mesh::flux_func &sfu, Mesh::flux_func &ff,
-                       Mesh::flux_func &sff) {
-  std::vector<Options *> options = {optionbase->getSection(sec),
-                                    optionbase->getSection("diff")};
-  derivs_set(options, FirstDerivTable, FirstStagDerivTable, "First", "C2", fdd, sfdd,
-             staggerGrids);
-
-  derivs_set(options, SecondDerivTable, SecondStagDerivTable, "Second", "C2", fd2d, sfd2d,
-             staggerGrids);
-
-  derivs_set(options, UpwindTable, UpwindStagTable, "Upwind", "U1", fu, sfu,
-             staggerGrids);
-
-  derivs_set(options, FluxTable, FluxStagTable, "Flux", "U1", ff, sff, staggerGrids);
-}
-
-/// Initialise the derivative methods. Must be called before any derivatives are used
-void Mesh::derivs_init(Options *options) {
-  TRACE("Initialising derivatives");
-
-  output_info.write("Setting X differencing methods\n");
-  derivs_initialise(options, "ddx", StaggerGrids, fDDX, sfDDX, fD2DX2, sfD2DX2, fVDDX,
-                    sfVDDX, fFDDX, sfFDDX);
-
-  if ((fDDX == nullptr) || (fD2DX2 == nullptr))
-    throw BoutException("FFT cannot be used in X\n");
-
-  output_info.write("Setting Y differencing methods\n");
-  derivs_initialise(options, "ddy", StaggerGrids, fDDY, sfDDY, fD2DY2, sfD2DY2, fVDDY,
-                    sfVDDY, fFDDY, sfFDDY);
-
-  if ((fDDY == nullptr) || (fD2DY2 == nullptr))
-    throw BoutException("FFT cannot be used in Y\n");
-
-  output_info.write("Setting Z differencing methods\n");
-  derivs_initialise(options, "ddz", StaggerGrids, fDDZ, sfDDZ, fD2DZ2, sfD2DZ2, fVDDZ,
-                    sfVDDZ, fFDDZ, sfFDDZ);
-
-  // Get the fraction of modes filtered out in FFT derivatives
-  options->getSection("ddz")->get("fft_filter", fft_derivs_filter, 0.0);
-}
-
 /*******************************************************************************
  * Apply differential operators. These are fairly brain-dead functions
  * which apply a derivative function to a field (sort of like map). Decisions
@@ -344,7 +75,7 @@ void Mesh::derivs_init(Options *options) {
  *******************************************************************************/
 
 // X derivative
-template<Mesh::deriv_func func>
+template<Mesh::deriv_func func, Mesh::stencil_2d get_vals>
 const Field2D Mesh::applyXdiff(const Field2D &var,
                                CELL_LOC loc, REGION region) {
   ASSERT1(this == var.getMesh());
@@ -413,37 +144,20 @@ const Field2D Mesh::applyXdiff(const Field2D &var,
 
   } else {
     // Non-staggered differencing
-
-    if (this->xstart > 1) {
-      // More than one guard cell, so set pp and mm values
-      // This allows higher-order methods to be used
-      BOUT_OMP(parallel)
-      {
+    
+    BOUT_OMP(parallel)
+    {
       stencil s;
-      //for (const auto &i : result.region(region)) {
-      BLOCK_REGION_LOOP_PARALLEL_SECTION(mesh->getRegion3D("RGN_NOBNDRY"), i,
-					 s.mm = var[i.xmm()];
-					 s.m = var[i.xm()];
-					 s.c = var[i];
-					 s.p = var[i.xp()];
-					 s.pp = var[i.xpp()];
+      BLOCK_REGION_LOOP_PARALLEL_SECTION(mesh->getRegion2D("RGN_NOBNDRY"), i,
+					 // s.mm = var[i.xmm()];
+					 // s.m = var[i.xm()];
+					 // s.c = var[i];
+					 // s.p = var[i.xp()];
+					 // s.pp = var[i.xpp()];
+					 get_vals(s, var, i);
 					 result[i] = func(s);
-			)
+					 )
 	}
-    } else {
-      // Only one guard cell, so no pp or mm values
-      BOUT_OMP(parallel)
-      {
-      stencil s;
-      //for (const auto &i : result.region(region)) {
-      BLOCK_REGION_LOOP_PARALLEL_SECTION(mesh->getRegion3D("RGN_NOBNDRY"), i,
-					 s.m = var[i.xm()];
-					 s.c = var[i];
-					 s.p = var[i.xp()];
-					 result[i] = func(s);
-			)
-	}
-    }
   }
 
   result.setLocation(diffloc);
@@ -456,7 +170,7 @@ const Field2D Mesh::applyXdiff(const Field2D &var,
   return result;
 }
 
-template<Mesh::deriv_func func>
+template<Mesh::deriv_func func, Mesh::stencil_3d get_vals>
 const Field3D Mesh::applyXdiff(const Field3D &var, 
                                CELL_LOC loc, REGION region) {
   // Check that the mesh is correct
@@ -528,37 +242,17 @@ const Field3D Mesh::applyXdiff(const Field3D &var,
   } else {
     // Non-staggered differencing
 
-    if (this->xstart > 1) {
-      // More than one guard cell, so set pp and mm values
-      // This allows higher-order methods to be used
-      BOUT_OMP(parallel)
-      {
+    BOUT_OMP(parallel)
+    {
       stencil s;
       //for (const auto &i : result.region(region)) {
       BLOCK_REGION_LOOP_PARALLEL_SECTION(mesh->getRegion3D("RGN_NOBNDRY"), i,
-					 s.mm = var[i.xmm()];
-					 s.m = var[i.xm()];
-					 s.c = var[i];
-					 s.p = var[i.xp()];
-					 s.pp = var[i.xpp()];
+					 get_vals(s, var, i);
 					 result[i] = func(s);
-			)
+					 )
 	}
-    } else {
-      // Only one guard cell, so no pp or mm values
-      BOUT_OMP(parallel)
-      {
-      stencil s;
-      //for (const auto &i : result.region(region)) {
-      BLOCK_REGION_LOOP_PARALLEL_SECTION(mesh->getRegion3D("RGN_NOBNDRY"), i,
-					 s.m = var[i.xm()];
-					 s.c = var[i];
-					 s.p = var[i.xp()];
-					 result[i] = func(s);
-			)
-	}
-    }
   }
+
 
   result.setLocation(diffloc);
 
@@ -885,15 +579,26 @@ const Field3D Mesh::indexDDX(const Field3D &f, CELL_LOC outloc, DIFF_METHOD meth
       throw BoutException("Cannot use FFT for X derivatives");
   }
 
-  switch(method) {
-  case(DIFF_C2) : {result = applyXdiff<DDX_C2>(f, diffloc, region); break;}
-  case(DIFF_W2) : {result = applyXdiff<DDX_CWENO2>(f, diffloc, region); break;}
-  case(DIFF_W3) : {result = applyXdiff<DDX_CWENO3>(f, diffloc, region); break;}
-  case(DIFF_C4) : {result = applyXdiff<DDX_C4>(f, diffloc, region); break;}
-  case(DIFF_S2) : {result = applyXdiff<DDX_S2>(f, diffloc, region); break;}
-  default : throw BoutException("Invalid method encountered in indexDDX");
+  if(this->xstart > 1){
+    switch(method) {
+    case(DIFF_C2) : {result = applyXdiff<DDX_C2, NG_2_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_W2) : {result = applyXdiff<DDX_CWENO2, NG_2_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_W3) : {result = applyXdiff<DDX_CWENO3, NG_2_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_C4) : {result = applyXdiff<DDX_C4, NG_2_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_S2) : {result = applyXdiff<DDX_S2, NG_2_DIR_X>(f, diffloc, region); break;}
+    default : throw BoutException("Invalid method encountered in indexDDX");
+    }
+  } else {
+    switch(method) {
+    case(DIFF_C2) : {result = applyXdiff<DDX_C2, NG_1_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_W2) : {result = applyXdiff<DDX_CWENO2, NG_1_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_W3) : {result = applyXdiff<DDX_CWENO3, NG_1_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_C4) : {result = applyXdiff<DDX_C4, NG_1_DIR_X>(f, diffloc, region); break;}
+    case(DIFF_S2) : {result = applyXdiff<DDX_S2, NG_1_DIR_X>(f, diffloc, region); break;}
+    default : throw BoutException("Invalid method encountered in indexDDX");
+    }
   }
-
+  
   result.setLocation(diffloc); // Set the result location
 
   return result;
@@ -903,13 +608,24 @@ const Field2D Mesh::indexDDX(const Field2D &f, CELL_LOC outloc,
                              DIFF_METHOD method, REGION region) {
   ASSERT1(outloc == CELL_DEFAULT || outloc == f.getLocation());
   ASSERT1(method == DIFF_DEFAULT);
-  switch(method) {
-  case(DIFF_C2) : return applyXdiff<DDX_C2>(f, outloc, region);
-  case(DIFF_W2) : return applyXdiff<DDX_CWENO2>(f, outloc, region);
-  case(DIFF_W3) : return applyXdiff<DDX_CWENO3>(f, outloc, region);
-  case(DIFF_C4) : return applyXdiff<DDX_C4>(f, outloc, region);
-  case(DIFF_S2) : return applyXdiff<DDX_S2>(f, outloc, region);
-  default : throw BoutException("Invalid method encountered in indexDDX");
+  if(this->xstart > 1){
+    switch(method) {
+    case(DIFF_C2) : return applyXdiff<DDX_C2, NG_2_DIR_X>(f, outloc, region);
+    case(DIFF_W2) : return applyXdiff<DDX_CWENO2, NG_2_DIR_X>(f, outloc, region);
+    case(DIFF_W3) : return applyXdiff<DDX_CWENO3, NG_2_DIR_X>(f, outloc, region);
+    case(DIFF_C4) : return applyXdiff<DDX_C4, NG_2_DIR_X>(f, outloc, region);
+    case(DIFF_S2) : return applyXdiff<DDX_S2, NG_2_DIR_X>(f, outloc, region);
+    default : throw BoutException("Invalid method encountered in indexDDX");
+    }
+  } else {
+    switch(method) {
+    case(DIFF_C2) : return applyXdiff<DDX_C2, NG_1_DIR_X>(f, outloc, region);
+    case(DIFF_W2) : return applyXdiff<DDX_CWENO2, NG_1_DIR_X>(f, outloc, region);
+    case(DIFF_W3) : return applyXdiff<DDX_CWENO3, NG_1_DIR_X>(f, outloc, region);
+    case(DIFF_C4) : return applyXdiff<DDX_C4, NG_1_DIR_X>(f, outloc, region);
+    case(DIFF_S2) : return applyXdiff<DDX_S2, NG_1_DIR_X>(f, outloc, region);
+    default : throw BoutException("Invalid method encountered in indexDDX");
+    }
   }
 }
 

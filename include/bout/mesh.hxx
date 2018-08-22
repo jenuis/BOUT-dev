@@ -597,6 +597,10 @@ class Mesh {
                           DIFF_METHOD method, REGION region=RGN_NOBNDRY);
   /// Derivative functions of a single field stencil
   typedef BoutReal (*deriv_func)(stencil &);
+
+  typedef void (*stencil_3d)(stencil &, const Field3D&, const Ind3D&);
+  typedef void (*stencil_2d)(stencil &, const Field2D&, const Ind2D&);
+  
   /// Derivative functions of a BoutReal velocity, and field stencil
   typedef BoutReal (*upwind_func)(BoutReal, stencil &);
   /// Derivative functions of a velocity field, and field stencil v, f
@@ -713,10 +717,10 @@ class Mesh {
                            REGION region = RGN_NOBNDRY);
 
 
-  template<Mesh::deriv_func func>
+  template<Mesh::deriv_func func, Mesh::stencil_2d get_vals>
   const Field2D applyXdiff(const Field2D &var, CELL_LOC loc = CELL_DEFAULT, REGION region = RGN_NOBNDRY);
 
-  template<Mesh::deriv_func func>
+  template<Mesh::deriv_func func, Mesh::stencil_3d get_vals>
   const Field3D applyXdiff(const Field3D &var, CELL_LOC loc = CELL_DEFAULT, REGION region = RGN_NOBNDRY);
 
   const Field2D applyYdiff(const Field2D &var, deriv_func func,
