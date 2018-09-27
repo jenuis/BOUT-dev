@@ -892,12 +892,13 @@ const Field2D Mesh::applyYdiff(const Field2D &var, Mesh::deriv_func func, CELL_L
   ASSERT1(this == var.getMesh());
   // Check that the input variable has data
   ASSERT1(var.isAllocated());
-
+  // Cell location of the input field
   CELL_LOC inloc = var.getLocation();
   if (outloc == CELL_DEFAULT)
     outloc = inloc;
   // Allowed staggers:
-  ASSERT1(outloc == inloc);
+  ASSERT1(outloc == inloc || (outloc == CELL_CENTRE && inloc == CELL_YLOW) ||
+          (outloc == CELL_YLOW && inloc == CELL_CENTRE));
 
   if (var.getNy() == 1) {
     auto tmp = Field2D(0., this);
@@ -907,47 +908,106 @@ const Field2D Mesh::applyYdiff(const Field2D &var, Mesh::deriv_func func, CELL_L
 
   /// Convert REGION enum to a Region string identifier
   const auto region_str = REGION_STRING(region);
-  
+
   Field2D result(this);
   result.allocate(); // Make sure data allocated
   result.setLocation(outloc);
 
-  if (this->ystart > 1) {
-    // More than one guard cell, so set pp and mm values
-    // This allows higher-order methods to be used
-    BOUT_OMP(parallel)
-    {
-      stencil s;
-      BOUT_FOR_INNER(i, this->getRegion2D(region_str)) {
-        s.mm = var[i.ymm()];
-        s.m = var[i.ym()];
-        s.c = var[i];
-        s.p = var[i.yp()];
-        s.pp = var[i.ypp()];
+  if (this->StaggerGrids && (outloc != inloc)) {
+    // Staggered differencing
 
-        result[i] = func(s);
+    if (this->ystart > 1) {
+      // More than one guard cell, so set pp and mm values
+      // This allows higher-order methods to be used
+      BOUT_OMP(parallel) {
+        stencil s;
+        BOUT_FOR_INNER(i, this->getRegion3D(region_str)) {
+          // Set stencils
+          s.mm = var[i.ymm()];
+          s.m = var[i.ym()];
+          s.c = var[i];
+          s.p = var[i.yp()];
+          s.pp = var[i.ypp()];
+
+          if (outloc == CELL_YLOW) {
+            // Producing a stencil centred around a lower Y value
+            s.pp = s.p;
+            s.p = s.c;
+          } else if (inloc == CELL_YLOW) {
+            // Stencil centred around a cell centre
+            s.mm = s.m;
+            s.m = s.c;
+          }
+
+          result[i] = func(s);
+        }
+      }
+    } else {
+      // Only one guard cell, so no pp or mm values
+      BOUT_OMP(parallel) {
+        stencil s;
+        BOUT_FOR_INNER(i, this->getRegion3D(region_str)) {
+          // Set stencils
+          s.m = var[i.ym()];
+          s.c = var[i];
+          s.p = var[i.yp()];
+
+          if (outloc == CELL_YLOW) {
+            // Producing a stencil centred around a lower Y value
+            s.pp = s.p;
+            s.p = s.c;
+          } else if (inloc == CELL_YLOW) {
+            // Stencil centred around a cell centre
+            s.mm = s.m;
+            s.m = s.c;
+          }
+
+          result[i] = func(s);
+        }
       }
     }
   } else {
-    BOUT_OMP(parallel)
-    {
-      stencil s;
-      BOUT_FOR_INNER(i, this->getRegion2D(region_str)) {
-        s.m = var[i.ym()];
-        s.c = var[i];
-        s.p = var[i.yp()];
+    // Non-staggered differencing
 
-        result[i] = func(s);
+    if (this->ystart > 1) {
+      // More than one guard cell, so set pp and mm values
+      // This allows higher-order methods to be used
+      BOUT_OMP(parallel) {
+        stencil s;
+        BOUT_FOR_INNER(i, this->getRegion3D(region_str)) {
+          // Set stencils
+          s.mm = var[i.ymm()];
+          s.m = var[i.ym()];
+          s.c = var[i];
+          s.p = var[i.yp()];
+          s.pp = var[i.ypp()];
+
+          result[i] = func(s);
+        }
+      }
+    } else {
+      // Only one guard cell, so no pp or mm values
+      BOUT_OMP(parallel) {
+        stencil s;
+        BOUT_FOR_INNER(i, this->getRegion3D(region_str)) {
+          // Set stencils
+          s.m = var[i.ym()];
+          s.c = var[i];
+          s.p = var[i.yp()];
+
+          result[i] = func(s);
+        }
       }
     }
   }
 
 #if CHECK > 0
   // Mark boundaries as invalid
-  result.bndry_yup = result.bndry_ydown = false;
+  result.bndry_xin = result.bndry_xout = result.bndry_yup = result.bndry_ydown = false;
 #endif
 
   return result;
+
 }
 
 const Field3D Mesh::applyYdiff(const Field3D &var, Mesh::deriv_func func, CELL_LOC outloc,
@@ -1116,7 +1176,6 @@ const Field3D Mesh::applyYdiff(const Field3D &var, Mesh::deriv_func func, CELL_L
     }
 
     // Shift result back
-
     result = this->fromFieldAligned(result);
   }
 
