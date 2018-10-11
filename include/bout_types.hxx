@@ -86,7 +86,7 @@ inline const std::string& DIRECTION_STRING(DIRECTION direction) {
 }
 
 /// To identify valid staggering combinations
-enum class STAGGER { None = 0, C2L = 1, L2C = 2};
+enum class STAGGER { NONE = 0, None = 0, C2L = 1, L2C = 2};
 
 const std::map<STAGGER, std::string> STAGGERtoString = {
   {STAGGER::None, "No staggering"},
