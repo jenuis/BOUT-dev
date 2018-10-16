@@ -78,7 +78,13 @@ void BoundaryFactory::cleanup() {
   instance = nullptr;
 }
 
-BoundaryOpBase* BoundaryFactory::create(const string &name, BoundaryRegionBase *region) {
+namespace {
+  template<typename T>
+  using OpRegion = typename std::conditional<std::is_same<T, BoundaryRegionPar>::value, BoundaryRegionPar, BoundaryRegion>::type;
+}
+
+template<typename T>
+T* BoundaryFactory::create(const string &name, OpRegion<T> *region) {
 
   // Search for a string of the form: modifier(operation)
   auto pos = name.find('(');
@@ -89,26 +95,21 @@ BoundaryOpBase* BoundaryFactory::create(const string &name, BoundaryRegionBase *
     if( (name == "null") || (name == "none") )
       return nullptr;
 
-    if(region->isParallel) {
-      // Parallel boundary
-      BoundaryOpPar *pop = findBoundaryOpPar(trim(name));
-      if (pop == nullptr)
-        throw BoutException("Could not find parallel boundary condition '%s'",  name.c_str());
-
-      // Clone the boundary operation, passing the region to operate over and an empty args list
-      list<string> args;
-      return pop->clone(static_cast<BoundaryRegionPar*>(region), args);
+    T *op;
+    if (std::is_same<T, BoundaryOpPar>::value) {
+      op = findBoundaryOpPar(trim(name));
     } else {
-      // Perpendicular boundary
-      BoundaryOp *op = findBoundaryOp(trim(name));
-      if (op == nullptr)
-        throw BoutException("Could not find boundary condition '%s'",  name.c_str());
-
-      // Clone the boundary operation, passing the region to operate over and an empty args list
-      list<string> args;
-      return op->clone(static_cast<BoundaryRegion*>(region), args);
+      op = findBoundaryOp(trim(name));
     }
+    if (op == nullptr) {
+      throw BoutException("Could not find boundary condition '%s'",  name.c_str());
+    }
+
+    // Clone the boundary operation, passing the region to operate over and an empty args list
+    list<string> args;
+    return op->clone(OpRegion<T>* region, args);
   }
+
   // Contains a bracket. Find the last bracket and remove
   auto pos2 = name.rfind(')');
   if(pos2 == string::npos) {
@@ -158,34 +159,33 @@ BoundaryOpBase* BoundaryFactory::create(const string &name, BoundaryRegionBase *
     }
   */
 
-  // Test if func is a modifier
-  BoundaryModifier *mod = findBoundaryMod(func);
-  if (mod != nullptr) {
-    // The first argument should be an operation
-    BoundaryOp *op = static_cast<BoundaryOp*>(create(arglist.front(), region));
-    if (op == nullptr)
-      return nullptr;
+  if (std::is_same<T, BoundaryOp>::value) {
+    // Test if func is a modifier
+    BoundaryModifier *mod = findBoundaryMod(func);
+    if (mod != nullptr) {
+      // The first argument should be an operation
+      T *op = create(arglist.front(), region);
+      if (op == nullptr)
+        return nullptr;
 
-    // Remove the first element (name of operation)
-    arglist.pop_front();
+      // Remove the first element (name of operation)
+      arglist.pop_front();
 
-    // Clone the modifier, passing in the operator and remaining strings as argument
-    return mod->cloneMod(op, arglist);
-  }
-
-  if(region->isParallel) {
-    // Parallel boundary
-    BoundaryOpPar *pop = findBoundaryOpPar(trim(func));
-    if (pop != nullptr) {
-      // An operation with arguments
-      return pop->clone(static_cast<BoundaryRegionPar*>(region), arglist);
+      // Clone the modifier, passing in the operator and remaining strings as argument
+      return mod->cloneMod(op, arglist);
     }
-  } else {
-    // Perpendicular boundary
-    BoundaryOp *op = findBoundaryOp(trim(func));
+
+    T *op = findBoundaryOp(trim(func));
     if (op != nullptr) {
       // An operation with arguments
-      return op->clone(static_cast<BoundaryRegion*>(region), arglist);
+      return op->clone(region, arglist);
+    }
+  } else {
+    // Parallel boundary
+    T *pop = findBoundaryOpPar(trim(func));
+    if (pop != nullptr) {
+      // An operation with arguments
+      return pop->clone(region, arglist);
     }
   }
 
@@ -195,11 +195,16 @@ BoundaryOpBase* BoundaryFactory::create(const string &name, BoundaryRegionBase *
   return nullptr;
 }
 
-BoundaryOpBase* BoundaryFactory::create(const char* name, BoundaryRegionBase *region) {
+BoundaryOp* BoundaryFactory::create(const char* name, BoundaryRegion*region) {
   return create(string(name), region);
 }
 
-BoundaryOpBase* BoundaryFactory::createFromOptions(const string &varname, BoundaryRegionBase *region) {
+BoundaryOpPar* BoundaryFactory::create(const char* name, BoundaryRegionPar *region) {
+  return create(string(name), region);
+}
+
+template<typename T>
+T* BoundaryFactory::createFromOptions(const string &varname, OpRegion<T>* region) {
   if (region == nullptr)
     return nullptr;
 
@@ -259,7 +264,7 @@ BoundaryOpBase* BoundaryFactory::createFromOptions(const string &varname, Bounda
   }
 
   /// Then (var, all)
-  if(region->isParallel) {
+  if(std::is_same<T, BoundaryOpPar>::value) {
     if(varOpts->isSet(prefix+"par_all")) {
       varOpts->get(prefix+"par_all", set, "");
       return create(set, region);
@@ -287,7 +292,7 @@ BoundaryOpBase* BoundaryFactory::createFromOptions(const string &varname, Bounda
   }
 
   /// Then (all, all)
-  if(region->isParallel) {
+  if(std::is_same<T, BoundaryOpPar>::value) {
     // Different default for parallel boundary regions
     varOpts->get(prefix+"par_all", set, "parallel_dirichlet");
   } else {
@@ -298,8 +303,12 @@ BoundaryOpBase* BoundaryFactory::createFromOptions(const string &varname, Bounda
   // values. If a user want to override, specify "none" or "null"
 }
 
-BoundaryOpBase* BoundaryFactory::createFromOptions(const char* varname, BoundaryRegionBase *region) {
+BoundaryOp* BoundaryFactory::createFromOptions(const char* varname, BoundaryRegion* region) {
   return createFromOptions(string(varname), region);
+}
+
+BoundaryOpPar* BoundaryFactory::createFromOptions(const char* varname, BoundaryRegionPar* region) {
+  return createFromOptionsPar(string(varname), region);
 }
 
 void BoundaryFactory::add(BoundaryOp* bop, const string &name) {

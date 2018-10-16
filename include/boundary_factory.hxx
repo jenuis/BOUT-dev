@@ -55,7 +55,7 @@ using std::map;
  * Subsequent calls to create() or createFromOptions() can make use
  * of the boundary type "myboundary".
  *
- * BoundaryOpBase *bndry = bf->create("myboundary()", new BoundaryRegionXOut("xout", 0, 10, localmesh));
+ * BoundaryOp *bndry = bf->create("myboundary()", new BoundaryRegionXOut("xout", 0, 10, localmesh));
  * 
  * where the region is defined in boundary_region.hxx
  * 
@@ -69,12 +69,16 @@ class BoundaryFactory {
   static void cleanup(); ///< Frees all memory
 
   /// Create a boundary operation object
-  BoundaryOpBase* create(const string &name, BoundaryRegionBase *region);
-  BoundaryOpBase* create(const char* name, BoundaryRegionBase *region);
+  BoundaryOp* create(const string &name, BoundaryRegion* region);
+  BoundaryOp* create(const char* name, BoundaryRegion* region);
+  BoundaryOpPar* create(const string &name, BoundaryRegionPar* region);
+  BoundaryOpPar* create(const char* name, BoundaryRegionPar* region);
 
   /// Create a boundary object using the options file
-  BoundaryOpBase* createFromOptions(const string &varname, BoundaryRegionBase *region);
-  BoundaryOpBase* createFromOptions(const char* varname, BoundaryRegionBase *region);
+  BoundaryOp* createFromOptions(const string &varname, BoundaryRegion*region);
+  BoundaryOp* createFromOptions(const char* varname, BoundaryRegion*region);
+  BoundaryOpPar* createFromOptions(const string &varname, BoundaryRegionPar *region);
+  BoundaryOpPar* createFromOptions(const char* varname, BoundaryRegionPar *region);
 
   /*!
    * Add available boundary conditions and modifiers
