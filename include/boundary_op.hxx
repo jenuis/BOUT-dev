@@ -24,10 +24,10 @@ public:
   virtual ~BoundaryOpBase() {}
 
   /// Apply a boundary condition on field f
-  virtual void apply(Field2D &f) = 0;
-  virtual void apply(Field2D &f,BoutReal UNUSED(t)){return apply(f);}//JMAD
-  virtual void apply(Field3D &f) = 0;
-  virtual void apply(Field3D &f,BoutReal UNUSED(t)){return apply(f);}//JMAD
+  virtual void apply(Field2D &f) { return apply(f, 0.); }
+  virtual void apply(Field2D &f,BoutReal t) = 0;
+  virtual void apply(Field3D &f) { return apply(f, 0.); }
+  virtual void apply(Field3D &f,BoutReal t) = 0;
 
   virtual void apply(Vector2D &f) {
     apply(f.x);
@@ -57,17 +57,28 @@ public:
     return nullptr;
   }
 
+  // Apply a boundary condition on f
+  template<typename T>
+  virtual void apply(T &f, BoutReal t) override;
+
+  // Apply boundary condition at a point
+  template<typename T>
+  virtual void applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
+  // Apply to staggered grid
+  template<typename T>
+  virtual void applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
+
+  // extrapolate to further guard cells
+  template<typename T>
+  virtual void extrapFurther(T &f, int x, int bx, int y, int by, int z);
+
   /// Apply a boundary condition on ddt(f)
-  virtual void apply_ddt(Field2D &f) {
+  template<typename T>
+  virtual void apply_ddt(Field3D &f) override;
+  virtual void apply_ddt(Vector2D &f) override {
     apply(ddt(f));
   }
-  virtual void apply_ddt(Field3D &f) {
-    apply(ddt(f));
-  }
-  virtual void apply_ddt(Vector2D &f) {
-    apply(ddt(f));
-  }
-  virtual void apply_ddt(Vector3D &f) {
+  virtual void apply_ddt(Vector3D &f) override {
     apply(ddt(f));
   }
 

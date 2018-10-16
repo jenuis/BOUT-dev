@@ -75,7 +75,6 @@ public:
   BoundaryOpPar* clone(BoundaryRegionPar *region, Field3D *f) override;
 
   using BoundaryOpPar::apply;
-  void apply(Field3D &f) override {return apply(f, 0);}
   void apply(Field3D &f, BoutReal t) override;
 
 };
@@ -95,7 +94,6 @@ public:
   BoundaryOpPar* clone(BoundaryRegionPar *region, Field3D *f) override;
 
   using BoundaryOpPar::apply;
-  void apply(Field3D &f) override {return apply(f, 0);}
   void apply(Field3D &f, BoutReal t) override;
 
 };
@@ -115,7 +113,6 @@ public:
   BoundaryOpPar* clone(BoundaryRegionPar *region, Field3D *f) override;
 
   using BoundaryOpPar::apply;
-  void apply(Field3D &f) override {return apply(f, 0);}
   void apply(Field3D &f, BoutReal t) override;
 
 };
@@ -135,7 +132,6 @@ public:
   BoundaryOpPar* clone(BoundaryRegionPar *region, Field3D *f) override;
 
   using BoundaryOpPar::apply;
-  void apply(Field3D &f) override {return apply(f, 0);}
   void apply(Field3D &f, BoutReal t) override;
 
 };
