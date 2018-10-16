@@ -119,8 +119,7 @@ BoundaryOp* BoundaryDirichlet::clone(BoundaryRegion *region, const list<string> 
 }
 
 // Override apply() for BoundaryDirichlet because we apply a funny hack to the extra guard cells
-template<typename T>
-void BoundaryDirichlet::apply(T &f,BoutReal t) {
+void BoundaryDirichlet::apply(Field &f,BoutReal t) {
   // Set (at 2nd order) the value at the mid-point between the guard cell and the grid cell to be val
   // N.B. Only first guard cells (closest to the grid) should ever be used
 
@@ -396,19 +395,13 @@ BoundaryOp* BoundaryDirichlet_O3::clone(BoundaryRegion *region, const list<strin
   return new BoundaryDirichlet_O3(region, newgen);
 }
 
-template<typename T>
-void BoundaryDirichlet_O3::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_O3::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = (8./3)*val - 2.*f(x - bx, y - by, z) + f(x - 2*bx, y - 2*by, z)/3.;
 }
-//void BoundaryDirichlet_O3::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-//void BoundaryDirichlet_O3::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_O3::applyAtPointStaggered(T &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_O3::applyAtPointStaggered(Field &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = val;
 }
-//void BoundaryDirichlet_O3::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
-//void BoundaryDirichlet_O3::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 // Extrapolate to calculate boundary cell to 4th-order
@@ -423,27 +416,18 @@ BoundaryOp* BoundaryDirichlet_O4::clone(BoundaryRegion *region, const list<strin
   return new BoundaryDirichlet_O4(region, newgen);
 }
 
-template<typename T>
-void BoundaryDirichlet_O4::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_O4::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = (16./5)*val - 3.*f(x - bx, y - by, z) + f(x - 2*bx, y - 2*by, z) - (1./5)*f(x - 3*bx, y - 3*by, z);
 }
-void BoundaryDirichlet_O4::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_O4::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_O4::applyAtPointStaggered(T &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_O4::applyAtPointStaggered(Field &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = val;
 }
-void BoundaryDirichlet_O4::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_O4::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_O4::extrapFurther(T &f, int x, int bx, int y, int by, int z) {
+void BoundaryDirichlet_O4::extrapFurther(Field &f, int x, int bx, int y, int by, int z) {
   f(x, y, z) = 4.0*f(x - bx, y - by, z) - 6.0*f(x - 2*bx, y - 2*by, z)
     + 4.0*f(x - 3*bx, y - 3*by, z) - f(x - 4*bx, y - 4*by, z);
 }
-void BoundaryDirichlet_O4::extrapFurther(Field3D &f, int x, int bx, int y, int by, int z);
-void BoundaryDirichlet_O4::extrapFurther(Field2D &f, int x, int bx, int y, int by, int z);
 
 ///////////////////////////////////////////////////////////////
 
@@ -461,19 +445,13 @@ BoundaryOp* BoundaryDirichlet_2ndOrder::clone(BoundaryRegion *region, const list
 
 // Set (at 2nd order) the value at the mid-point between the guard cell and the grid cell to be val
 // N.B. Only first guard cells (closest to the grid) should ever be used
-template<typename T>
-void BoundaryDirichlet_2ndOrder:applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_2ndOrder:applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 8./3.*val - 2.*f(x - bx, y - by, z) + 1./3.*f(x - 2*bx, y - 2*by, z);
 }
-void BoundaryDirichlet_2ndOrder:applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_2ndOrder:applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_2ndOrder::applyAtPointStaggered(T &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_2ndOrder::applyAtPointStaggered(Field &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = val;
 }
-void BoundaryDirichlet_2ndOrder::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_2ndOrder::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -487,30 +465,21 @@ BoundaryOp* BoundaryDirichlet_4thOrder::clone(BoundaryRegion *region, const list
   return new BoundaryDirichlet_4thOrder(region);
 }
 
-template<typename T>
-void BoundaryDirichlet_4thOrder:applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_4thOrder:applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 128./35.*val - 4.*f(x - bx, y - by, z) + 2.*f(x - 2*bx, y - 2*by, z) - 4./3.*f(x - 3*bx, y - 3*by, z) + 1./7.*f(x - 4*bx, y - 4*by, z);
 }
-void BoundaryDirichlet_4thOrder:applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_4thOrder:applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_4thOrder::applyAtPointStaggered(T &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
+void BoundaryDirichlet_4thOrder::applyAtPointStaggered(Field &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = val;
 }
-void BoundaryDirichlet_4thOrder::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
-void BoundaryDirichlet_4thOrder::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int UNUSED(bx), int y, int UNUSED(by), int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryDirichlet_O4::extrapFurther(T &f, int x, int bx, int y, int by, int z) {
+void BoundaryDirichlet_O4::extrapFurther(Field &f, int x, int bx, int y, int by, int z) {
   // Changing this extrapolation to not depend on val, so just using grid point
   // values. Not sure if this is the correct order but stencil his 4 extra
   // points, which agrees with verifyNumPoints argument above - JTO 16/10/2018
   f(x, y, z) = 4.0*f(x - bx, y - by, z) - 6.0*f(x - 2*bx, y - 2*by, z)
     + 4.0*f(x - 3*bx, y - 3*by, z) - f(x - 4*bx, y - 4*by, z);
 }
-void BoundaryDirichlet_O4::extrapFurther(Field3D &f, int x, int bx, int y, int by, int z);
-void BoundaryDirichlet_O4::extrapFurther(Field2D &f, int x, int bx, int y, int by, int z);
 
 
 ///////////////////////////////////////////////////////////////
@@ -526,8 +495,7 @@ BoundaryOp* BoundaryNeumann_NonOrthogonal::clone(BoundaryRegion *region, const l
   return new BoundaryNeumann_NonOrthogonal(region);
 }
 
-template<typename T>
-void BoundaryNeumann_NonOrthogonal::apply(T &f, BoutReal UNUSED(t)) {
+void BoundaryNeumann_NonOrthogonal::apply(Field &f, BoutReal UNUSED(t)) {
   Mesh* localmesh = f.getMesh();
   Coordinates *metric = f.getCoordinates();
   // Calculate derivatives for metric use
@@ -571,8 +539,6 @@ void BoundaryNeumann_NonOrthogonal::apply(T &f, BoutReal UNUSED(t)) {
     }
   }
 }
-void BoundaryNeumann_NonOrthogonal::apply(Field3D &f);
-void BoundaryNeumann_NonOrthogonal::apply(Field2D &f);
 
 ///////////////////////////////////////////////////////////////
 
@@ -586,19 +552,13 @@ BoundaryOp* BoundaryNeumann2::clone(BoundaryRegion *region, const list<string> &
   return new BoundaryNeumann2(region);
 }
 
-template<typename T>
-void BoundaryNeumann2::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann2::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = (4.*f(x - bx, y - by, z) - f(x - 2*bx, y - 2*by, z))/3.;
 }
-void BoundaryNeumann2::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann2::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryNeumann2::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann2::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = (4.*f(x - bx, y - by, z) - f(x - 2*bx, y - 2*by, z))/3.;
 }
-void BoundaryNeumann2::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann2::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -618,23 +578,17 @@ BoundaryOp* BoundaryNeumann_2ndOrder::clone(BoundaryRegion *region, const list<s
   return new BoundaryNeumann_2ndOrder(region);
 }
 
-template<typename T>
-void BoundaryNeumann_2ndOrder::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann_2ndOrder::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   Coordinates *metric = f.getCoordinates();
   BoutReal delta = bx*metric->dx(x, y) + by*metric->dy(x, y);
   f(x, y, z) = f(x - bx, y - by, z) + val*delta;
 }
-void BoundaryNeumann_2ndOrder::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann_2ndOrder::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryNeumann_2ndOrder:applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann_2ndOrder:applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   Coordinates *metric = f.getCoordinates();
   BoutReal delta = bx*metric->dx(x, y) + by*metric->dy(x, y);
   f(x, y, z) = f(x - bx, y - by, z) + val*delta;
 }
-void BoundaryNeumann_2ndOrder:applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann_2ndOrder:applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -648,17 +602,13 @@ BoundaryOp* BoundaryNeumann::clone(BoundaryRegion *region, const list<string> &a
   return new BoundaryNeumann(region, newgen);
 }
 
-template<typename T>
-void BoundaryNeumann::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
+void BoundaryNeumann::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
   Coordinates *metric = f.getCoordinates();
   BoutReal delta = bx*metric->dx(x, y) + by*metric->dy(x, y);
   f(x,y, z) = f(x - bx, y - by, z) + delta*val;
 }
-void BoundaryNeumann::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
-void BoundaryNeumann::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
 
-template<typename T>
-void BoundaryNeumann::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   // For staggered case need to apply slightly differently Use one-sided
   // differencing. Cell is now on the boundary, so use one-sided differencing
   //
@@ -671,8 +621,6 @@ void BoundaryNeumann::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, i
 
   f(bndry->x,bndry->y, zk) = (4.*f(bndry->x - bndry->bx, bndry->y,zk) - f(bndry->x - 2*bndry->bx, bndry->y,zk) + 2.*val)/3.;
 }
-void BoundaryNeumann::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 
 ///////////////////////////////////////////////////////////////
@@ -686,22 +634,16 @@ BoundaryOp* BoundaryNeumann_O4::clone(BoundaryRegion *region, const list<string>
   return new BoundaryNeumann_O4(region, newgen);
 }
 
-template<typename T>
-void BoundaryNeumann_O4::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
+void BoundaryNeumann_O4::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
   BoutReal delta = bx*metric->dx(x, y) + by*metric->dy(x, y);
   f(x, y, z) = 12.*delta*val/11. +
                ( 17.*f(x - bx, y - by, z) + 9.*f(x - 2*bx, y - 2*by, z)
                  - 5.*f(x - 3*bx, y - 3*by, z) + f(x - 4*bx, y - 4*by, z))/22.;
 }
-void BoundaryNeumann_O4::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
-void BoundaryNeumann_O4::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
 
-template<typename T>
-void BoundaryNeumann_O4::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann_O4::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   throw BoutException("BoundaryNeumann_O4 is not implemented for staggered grids.");
 }
-void BoundaryNeumann_O4::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann_O4::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -715,23 +657,16 @@ BoundaryOp* BoundaryNeumann_4thOrder::clone(BoundaryRegion *region, const list<s
   return new BoundaryNeumann_4thOrder(region);
 }
 
-template<typename T>
-void BoundaryNeumann_4thOrder::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
+void BoundaryNeumann_4thOrder::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
   BoutReal delta = -(bx*metric->dx(x, y) + by*metric->dy(x, y));
   f(x, y, z) = 12.*delta/11.*val + 17./22.*f(x - bx, y - by, z) + 9./22.*f(x - 2*bx, y - 2*by, z) - 5./22.*f(x - 3*bx, y - 3*by, z) + 1./22.*f(x - 4*bx, y - 4*by, z);
 }
-void BoundaryNeumann_4thOrder::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
-void BoundaryNeumann_4thOrder::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
 
-template<typename T>
-void BoundaryNeumann_4thOrder::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumann_4thOrder::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   throw BoutException("BoundaryNeumann_4thOrder is not implemented for staggered grids.");
 }
-void BoundaryNeumann_4thOrder::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumann_4thOrder::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryNeumann_4thOrder::extrapFurther(T &f, int x, int bx, int y, int by, int z) {
+void BoundaryNeumann_4thOrder::extrapFurther(Field &f, int x, int bx, int y, int by, int z) {
   // Changing this extrapolation to not depend on val, so just using grid point
   // values. Not sure if this is the correct order but stencil his 4 extra
   // points, which agrees with verifyNumPoints argument above. Previously was
@@ -740,8 +675,6 @@ void BoundaryNeumann_4thOrder::extrapFurther(T &f, int x, int bx, int y, int by,
   f(x, y, z) = 4.0*f(x - bx, y - by, z) - 6.0*f(x - 2*bx, y - 2*by, z)
     + 4.0*f(x - 3*bx, y - 3*by, z) - f(x - 4*bx, y - 4*by, z);
 }
-void BoundaryNeumann_4thOrder::extrapFurther(Field3D &f, int x, int bx, int y, int by, int z);
-void BoundaryNeumann_4thOrder::extrapFurther(Field2D &f, int x, int bx, int y, int by, int z);
 
 ///////////////////////////////////////////////////////////////
 
@@ -753,20 +686,14 @@ BoundaryOp* BoundaryNeumannPar::clone(BoundaryRegion *region, const list<string>
   return new BoundaryNeumannPar(region);
 }
 
-template<typename T>
-void BoundaryNeumannPar::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
+void BoundaryNeumannPar::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
   // For each element, set equal to the next point in
   f(x, y, z) = f(x - bx, y - by, z)*sqrt(metric->g_22(x, y)/metric->g_22(x - bx, y - by));
 }
-void BoundaryNeumannPar::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
-void BoundaryNeumannPar::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
 
-template<typename T>
-void BoundaryNeumannPar::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryNeumannPar::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   throw BoutException("BoundaryNeumannPar is not implemented for staggered grids.");
 }
-void BoundaryNeumannPar::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryNeumannPar::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -800,8 +727,7 @@ BoundaryOp* BoundaryRobin::clone(BoundaryRegion *region, const list<string> &arg
   return new BoundaryRobin(region, a, b, g);
 }
 
-template<typename T>
-void BoundaryRobin::apply(T &f, BoutReal UNUSED(t)) {
+void BoundaryRobin::apply(Field &f, BoutReal UNUSED(t)) {
   Mesh* localmesh = f.getMesh();
   if(fabs(bval) < 1.e-12) {
     for(bndry->first(); !bndry->isDone(); bndry->next())
@@ -816,8 +742,6 @@ void BoundaryRobin::apply(T &f, BoutReal UNUSED(t)) {
 	f(bndry->x, bndry->y, z) = f(bndry->x - bndry->bx, bndry->y - bndry->by, z) + sign*(gval - aval*f(bndry->x - bndry->bx, bndry->y - bndry->by, z) ) / bval;
   }
 }
-void BoundaryRobin::apply(Field3D &f, BoutReal UNUSED(t));
-void BoundaryRobin::apply(Field2D &f, BoutReal UNUSED(t));
 
 ///////////////////////////////////////////////////////////////
 
@@ -829,19 +753,13 @@ BoundaryOp* BoundaryConstGradient::clone(BoundaryRegion *region, const list<stri
   return new BoundaryConstGradient(region);
 }
 
-template<typename T>
-void BoundaryConstGradient::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryConstGradient::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 2.*f(x - bx, y - by, z) - f(x - 2*bx, y - 2*by, z);
 }
-void BoundaryConstGradient::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryConstGradient::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryConstGradient::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryConstGradient::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   throw BoutException("BoundaryConstGradient is not implemented for staggered grids.");
 }
-void BoundaryConstGradient::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryConstGradient::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
@@ -1243,19 +1161,13 @@ BoundaryOp* BoundaryFree_O2::clone(BoundaryRegion *region, const list<string> &a
   return new BoundaryFree_O2(region) ; 
 }
 
-template<typename T>
-void BoundaryFree_O2::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryFree_O2::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 2*f(x - bx, y - by, z) - f(x - 2*bx, y - 2*by, z);
 }
-void BoundaryFree_O2::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryFree_O2::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
-template<typename T>
-void BoundaryFree_O2::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryFree_O2::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 2*f(x - bx, y - by, z) - f(x - 2*bx, y - 2*by, z);
 }
-void BoundaryFree_O2::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryFree_O2::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 //////////////////////////////////
 // Third order extrapolation:
@@ -1269,19 +1181,13 @@ BoundaryOp* BoundaryFree_O3::clone(BoundaryRegion *region, const list<string> &a
   return new BoundaryFree_O3(region) ; 
 }
 
-template<typename T>
-void BoundaryFree_O3::applyAtPoint(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
+void BoundaryFree_O3::applyAtPoint(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) {
   f(x, y, z) = 3.0*f(x - bx, y - by, z) - 3.0*f(x - 2*bx, y - 2*by, z) + f(x - 3*bx, y - 3*by, z);
 }
-void BoundaryFree_O3::applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
-void BoundaryFree_O3::applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric);
 
-template<typename T>
-void BoundaryFree_O3::applyAtPointStaggered(T &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
+void BoundaryFree_O3::applyAtPointStaggered(Field &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric)) {
   f(x, y, z) = 3.0*f(x - bx, y - by, z) - 3.0*f(x - 2*bx, y - 2*by, z) + f(x - 3*bx, y - 3*by, z);
 }
-void BoundaryFree_O3::applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
-void BoundaryFree_O3::applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* UNUSED(metric));
 
 ///////////////////////////////////////////////////////////////
 
