@@ -133,8 +133,8 @@ void BoundaryDirichlet::apply(Field &f,BoutReal t) {
 
   // Decide which generator to use
   std::shared_ptr<FieldGenerator>  fg = gen;
-  if(!fg)
-    fg = f.getBndryGenerator(bndry->location);
+  //if(!fg)
+    //fg = f.getBndryGenerator(bndry->location);
 
   BoutReal val = 0.0;
 
