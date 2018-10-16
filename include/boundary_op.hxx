@@ -26,7 +26,7 @@ public:
     apply_to_ddt = false;
   }
   BoundaryOp(BoundaryRegion *region) {bndry = region; apply_to_ddt=false;}
-  virtual ~BoundaryOp() {}
+  ~BoundaryOp() {}
 
   // Note: All methods must implement clone, except for modifiers (see below)
   virtual BoundaryOp* clone(BoundaryRegion *UNUSED(region), const list<string> &UNUSED(args)) {
@@ -34,8 +34,7 @@ public:
   }
 
   /// Apply a boundary condition on field f
-  virtual void apply(Field2D &f,BoutReal t = 0.) = 0;
-  virtual void apply(Field3D &f,BoutReal t = 0.) = 0;
+  virtual void apply(Field &f,BoutReal t = 0.) = 0;
 
   virtual void apply(Vector2D &f) {
     apply(f.x);
@@ -50,8 +49,7 @@ public:
   }
 
   /// Apply a boundary condition on ddt(f)
-  virtual void apply_ddt(Field2D &f);
-  virtual void apply_ddt(Field3D &f);
+  virtual void apply_ddt(Field &f);
   virtual void apply_ddt(Vector2D &f) {
     apply(ddt(f));
   }
@@ -67,16 +65,21 @@ protected:
   //virtual void apply(Field2D &f, BoutReal t = 0.) override;
 
   // Apply boundary condition at a point
-  virtual void applyAtPoint(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
-  virtual void applyAtPoint(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
+  virtual void applyAtPoint(Field &UNUSED(f), BoutReal UNUSED(val), int
+      UNUSED(x), int UNUSED(bx), int UNUSED(y), int UNUSED(by), int UNUSED(z),
+      Coordinates* UNUSED(metric)) {
+    ASSERT1(false);
+  }
 
   // Apply to staggered grid
-  virtual void applyAtPointStaggered(Field3D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
-  virtual void applyAtPointStaggered(Field2D &f, BoutReal val, int x, int bx, int y, int by, int z, Coordinates* metric) = 0;
+  virtual void applyAtPointStaggered(Field &UNUSED(f), BoutReal UNUSED(val),
+      int UNUSED(x), int UNUSED(bx), int UNUSED(y), int UNUSED(by), int
+      UNUSED(z), Coordinates* UNUSED(metric)) {
+    ASSERT1(false);
+  }
 
   // extrapolate to further guard cells
-  virtual void extrapFurther(Field3D &f, int x, int bx, int y, int by, int z);
-  virtual void extrapFurther(Field2D &f, int x, int bx, int y, int by, int z);
+  virtual void extrapFurther(Field &f, int x, int bx, int y, int by, int z);
 };
 
 class BoundaryModifier : public BoundaryOp {
